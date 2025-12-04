@@ -1,14 +1,31 @@
 from flask import Flask, render_template
-import socket
+from prometheus_client import Counter, Histogram, generate_latest
+import time
 
-app = Flask(__name__, template_folder="../templates", static_folder="../static")
+app = Flask(__name__)
 
-@app.route("/")
+REQUEST_COUNT = Counter(
+    'flask_requests_total',
+    'Total HTTP Requests',
+    ['method', 'endpoint']
+)
+
+REQUEST_LATENCY = Histogram(
+    'flask_request_latency_seconds',
+    'Request latency'
+)
+
+@app.route('/')
 def dashboard():
-    return render_template(
-        "index.html",
-        hostname=socket.gethostname()
-    )
+    REQUEST_COUNT.labels('GET', '/').inc()
+    start = time.time()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    response = render_template("index.html")
+
+    REQUEST_LATENCY.observe(time.time() - start)
+    return response
+
+@app.route('/metrics')
+def metrics():
+    return generate_latest(), 200
+
