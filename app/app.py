@@ -1,28 +1,21 @@
 from flask import Flask, render_template
-from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
+from prometheus_flask_exporter import PrometheusMetrics
 
 app = Flask(__name__)
 
-# ✅ Prometheus Metrics
-REQUEST_COUNT = Counter(
-    "flask_http_requests_total",
-    "Total HTTP Requests",
-    ["method", "endpoint"]
-)
+# ✅ Prometheus metrics
+metrics = PrometheusMetrics(app)
 
-@app.route("/")
+# This creates flask_http_requests_total automatically
+metrics.info('app_info', 'Flask App Info', version='1.0.0')
+
+@app.route('/')
 def dashboard():
-    REQUEST_COUNT.labels(method="GET", endpoint="/").inc()
     return render_template("index.html")
 
-@app.route("/health")
+@app.route('/health')
 def health():
-    REQUEST_COUNT.labels(method="GET", endpoint="/health").inc()
-    return {"status": "UP"}
-
-@app.route("/metrics")
-def metrics():
-    return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
